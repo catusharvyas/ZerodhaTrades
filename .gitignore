@@ -1,0 +1,11 @@
+.env
+.token.json
+KILL
+state/
+logs/
+config/strategies.yaml
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/

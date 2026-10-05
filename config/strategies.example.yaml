@@ -1,0 +1,30 @@
+# Copy to config/strategies.yaml and edit. Paper mode is the default.
+mode: paper                  # paper | live  (live also needs --live and ZT_CONFIRM_LIVE=YES)
+poll_interval_seconds: 30
+kill_switch_file: KILL       # create this file to halt entries and square off everything
+state_dir: state
+log_dir: logs
+
+risk:
+  max_daily_loss: 5000           # INR; breach halts trading and squares off
+  max_order_value: 50000         # INR per order
+  max_open_positions: 3
+  max_orders_per_minute: 5
+  allowed_symbols: [INFY, TCS]   # orders for anything else are rejected
+  trading_window: {start: "09:20", end: "15:00"}   # new entries only inside this window
+  square_off_time: "15:15"       # MIS positions are closed at/after this time (IST)
+
+strategies:
+  - name: infy_sma_cross_rsi
+    symbol: INFY
+    exchange: NSE
+    side: BUY
+    quantity: 10
+    product: MIS
+    interval: 5minute
+    max_trades_per_day: 1
+    stop_loss_pct: 1.0
+    target_pct: 2.0
+    entry:                       # ALL conditions must be true
+      - {type: sma_cross_up, fast: 9, slow: 21}
+      - {type: rsi_below, period: 14, value: 70}
