@@ -45,6 +45,11 @@ class Engine:
             "positions": {k: asdict(v) for k, v in self.positions.items()},
             "trade_day": self._trade_day, "trades": self.trades}))
 
+    def _heartbeat(self, now: datetime) -> None:
+        self._state_file.parent.mkdir(parents=True, exist_ok=True)
+        (self._state_file.parent / "heartbeat.json").write_text(
+            json.dumps({"ts": now.isoformat(), "mode": self.cfg.mode}))
+
     # ---- main loop ----
     def run(self, once: bool = False) -> None:
         while True:
@@ -57,6 +62,7 @@ class Engine:
             _time.sleep(self.cfg.poll_interval_seconds)
 
     def tick(self, now: datetime) -> None:
+        self._heartbeat(now)
         if self._trade_day != now.date().isoformat():  # new day: reset counters (and P&L)
             self._trade_day, self.trades = now.date().isoformat(), {}
             self.risk.realized_pnl, self.risk.halted = 0.0, False
@@ -115,7 +121,7 @@ class Engine:
         order = Order(strat.symbol, strat.exchange, strat.side, strat.quantity, strat.product,
                       tag=f"zt{uuid.uuid4().hex[:10]}")
         decision = self.risk.check_entry(order, price, len(self.positions), now)
-        self.audit.write("signal", now, strategy=strat.name, price=price,
+        self.audit.write("signal", now, strategy=strat.name, symbol=strat.symbol, price=price,
                          approved=decision.ok, reason=decision.reason)
         if not decision.ok:
             return

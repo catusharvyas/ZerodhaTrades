@@ -23,6 +23,9 @@ def main(argv: list[str] | None = None) -> None:
     run.add_argument("--config", default="config/strategies.yaml")
     run.add_argument("--live", action="store_true", help="Send REAL orders")
     run.add_argument("--once", action="store_true", help="Run a single tick and exit")
+    dash = sub.add_parser("dashboard", help="Local web dashboard (127.0.0.1 only)")
+    dash.add_argument("--config", default="config/strategies.yaml")
+    dash.add_argument("--port", type=int, default=8765)
     args = p.parse_args(argv)
 
     if args.cmd == "login":
@@ -31,6 +34,11 @@ def main(argv: list[str] | None = None) -> None:
     cfg = load_config(args.config)
     if args.cmd == "check-config":
         print(f"OK: {len(cfg.strategies)} strategies, mode={cfg.mode}")
+        return
+
+    if args.cmd == "dashboard":
+        from .dashboard import serve
+        serve(cfg, args.port)
         return
 
     live = args.live and cfg.mode == "live"

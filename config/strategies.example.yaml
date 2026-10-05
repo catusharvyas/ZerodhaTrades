@@ -26,5 +26,7 @@ strategies:
     stop_loss_pct: 1.0
     target_pct: 2.0
     entry:                       # ALL conditions must be true
+                                 # note: an SMA cross-up usually coincides with RSI ~65-75,
+                                 # so rsi_below 70 here would almost never fire
       - {type: sma_cross_up, fast: 9, slow: 21}
-      - {type: rsi_below, period: 14, value: 70}
+      - {type: rsi_below, period: 14, value: 75}   # placeholder thresholds: tune and backtest yours

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZerodhaTrades Dashboard</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #fff; --text: #14181f; --muted: #64707d; --line: #e3e7ec;
+  --good: #0a7d4f; --bad: #c0352b; --warn: #a15c00; --accent: #2457d6;
+  --good-bg: #e3f5ec; --bad-bg: #fbe7e5; --warn-bg: #fdf0d9;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1318; --panel: #171c23; --text: #e8ecf1; --muted: #8b97a5; --line: #262d37;
+    --good: #3ecf8e; --bad: #ff6b60; --warn: #f0b04a; --accent: #6b97ff;
+    --good-bg: #12301f; --bad-bg: #3a1a18; --warn-bg: #3a2a10;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+h1 { font-size: 18px; margin: 0; flex: 1 1 auto; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  margin: 0 0 10px; font-weight: 600; }
+.pill { padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+.pill.paper { background: var(--warn-bg); color: var(--warn); }
+.pill.live { background: var(--bad-bg); color: var(--bad); }
+.pill.ok { background: var(--good-bg); color: var(--good); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+button { font: inherit; font-weight: 600; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--bad); background: var(--bad-bg); color: var(--bad); }
+button.resume { border-color: var(--good); background: var(--good-bg); color: var(--good); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px;
+  margin-bottom: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.kpi .v { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); width: 0; }
+.bar > i.hot { background: var(--bad); }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+td.num, th.num { text-align: right; }
+td.detail { white-space: normal; color: var(--muted); max-width: 520px; }
+.tag { font-weight: 600; font-size: 12px; }
+.empty { color: var(--muted); padding: 10px 0; }
+.banner { padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; font-weight: 600; display: none; }
+.banner.show { display: block; }
+.grid2 { display: grid; gap: 16px; }
+footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ZerodhaTrades</h1>
+    <span id="mode" class="pill"></span>
+    <span id="status" class="pill"></span>
+    <button id="killbtn" type="button">Kill switch</button>
+  </header>
+
+  <div id="banner" class="banner"></div>
+
+  <section class="kpis">
+    <div class="card kpi"><h2>Day P&amp;L (realised)</h2><div id="pnl" class="v">–</div>
+      <div id="pnlsub" class="s"></div><div class="bar"><i id="lossbar"></i></div></div>
+    <div class="card kpi"><h2>Open positions</h2><div id="npos" class="v">–</div>
+      <div id="possub" class="s"></div></div>
+    <div class="card kpi"><h2>Engine</h2><div id="hb" class="v">–</div>
+      <div id="hbsub" class="s"></div></div>
+    <div class="card kpi"><h2>Session</h2><div id="win" class="v" style="font-size:20px">–</div>
+      <div id="winsub" class="s"></div></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card"><h2>Open positions</h2>
+      <div class="tablewrap"><table id="postbl"><thead><tr>
+        <th>Symbol</th><th>Strategy</th><th>Side</th><th class="num">Qty</th>
+        <th class="num">Entry</th><th class="num">Stop-loss</th><th class="num">Target</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div id="posempty" class="empty" hidden>No open positions.</div></section>
+
+    <section class="card"><h2>Audit feed (today, newest first)</h2>
+      <div class="tablewrap"><table id="evtbl"><thead><tr>
+        <th>Time</th><th>Event</th><th>Symbol</th><th class="num">Price</th><th class="num">P&amp;L</th><th>Detail</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div id="evempty" class="empty" hidden>No events yet today.</div></section>
+  </div>
+
+  <footer>Local view of <code>state/</code> and <code>logs/</code>. Auto-refreshes every 5 s.
+    The only action available here is the kill switch.</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const inr = (n) => (n < 0 ? "−" : "") + "₹" + Math.abs(n).toLocaleString("en-IN", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const px = (n) => (n == null ? "" : Number(n).toLocaleString("en-IN", {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+let killOn = false;
+
+function cell(tr, text, cls) {
+  const td = document.createElement("td");
+  td.textContent = text == null ? "" : text;
+  if (cls) td.className = cls;
+  tr.appendChild(td);
+  return td;
+}
+
+function detail(e) {
+  if (e.event === "signal") return e.approved ? "approved by risk gate" : "rejected: " + e.reason;
+  if (e.event === "exit") return "reason: " + e.reason + " · order " + e.order_id;
+  if (e.event === "entry") return "order " + e.order_id;
+  if (e.event === "halted") return e.kill_file ? "kill switch file present" : "daily loss limit hit";
+  if (e.event === "tick_error") return e.error;
+  return "";
+}
+
+function render(s) {
+  const mode = $("mode"); mode.textContent = s.mode.toUpperCase();
+  mode.className = "pill " + s.mode;
+
+  const stale = s.heartbeat_age_s == null || s.heartbeat_age_s > s.poll_interval_s * 3 + 10;
+  const st = $("status");
+  let text = "RUNNING", cls = "ok";
+  if (s.kill_switch) { text = "KILL SWITCH ON"; cls = "bad"; }
+  else if (s.halted) { text = "HALTED · LOSS LIMIT"; cls = "bad"; }
+  else if (stale) { text = "ENGINE NOT RUNNING"; cls = "warn"; }
+  st.textContent = text; st.className = "pill " + cls;
+
+  const b = $("banner");
+  b.className = "banner" + (s.kill_switch || s.halted ? " show" : "");
+  b.style.background = "var(--bad-bg)"; b.style.color = "var(--bad)";
+  b.textContent = s.kill_switch
+    ? "Kill switch is on: no new entries; open positions are squared off on the next tick."
+    : s.halted ? "Daily loss limit reached: trading halted for today." : "";
+
+  killOn = s.kill_switch;
+  const kb = $("killbtn");
+  kb.textContent = killOn ? "Release kill switch" : "Kill switch";
+  kb.className = killOn ? "resume" : "";
+
+  const pnl = $("pnl"); pnl.textContent = inr(s.day_pnl);
+  pnl.className = "v " + (s.day_pnl > 0 ? "pos" : s.day_pnl < 0 ? "neg" : "");
+  $("pnlsub").textContent = "loss limit " + inr(-s.risk.max_daily_loss);
+  const used = Math.max(0, Math.min(1, -s.day_pnl / s.risk.max_daily_loss));
+  const bar = $("lossbar"); bar.style.width = (used * 100) + "%"; bar.className = used > 0.7 ? "hot" : "";
+
+  $("npos").textContent = s.positions.length + " / " + s.risk.max_open_positions;
+  $("possub").textContent = "allowed: " + s.risk.allowed.join(", ");
+
+  $("hb").textContent = s.heartbeat_age_s == null ? "no heartbeat" : Math.round(s.heartbeat_age_s) + " s ago";
+  $("hbsub").textContent = "polls every " + s.poll_interval_s + " s";
+  $("win").textContent = s.risk.window;
+  $("winsub").textContent = "entries window · square-off " + s.risk.square_off;
+
+  const pb = document.querySelector("#postbl tbody"); pb.replaceChildren();
+  s.positions.forEach((p) => {
+    const tr = document.createElement("tr");
+    cell(tr, p.symbol); cell(tr, p.strategy);
+    cell(tr, p.side, "tag " + (p.side === "BUY" ? "pos" : "neg"));
+    cell(tr, p.quantity, "num"); cell(tr, px(p.entry_price), "num");
+    cell(tr, px(p.stop_loss), "num neg"); cell(tr, px(p.target), "num pos");
+    pb.appendChild(tr);
+  });
+  $("posempty").hidden = s.positions.length > 0;
+
+  const eb = document.querySelector("#evtbl tbody"); eb.replaceChildren();
+  s.events.forEach((e) => {
+    const tr = document.createElement("tr");
+    cell(tr, e.ts.slice(11, 19));
+    cell(tr, e.event, "tag");
+    cell(tr, (e.order && e.order.symbol) || e.symbol || "");
+    cell(tr, px(e.price), "num");
+    cell(tr, e.pnl == null ? "" : inr(e.pnl), "num " + (e.pnl > 0 ? "pos" : e.pnl < 0 ? "neg" : ""));
+    cell(tr, detail(e), "detail");
+    eb.appendChild(tr);
+  });
+  $("evempty").hidden = s.events.length > 0;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/state", {cache: "no-store"});
+    render(await r.json());
+  } catch (e) { $("status").textContent = "DASHBOARD OFFLINE"; $("status").className = "pill bad"; }
+}
+
+$("killbtn").addEventListener("click", async () => {
+  const turningOn = !killOn;
+  const msg = turningOn
+    ? "Turn the kill switch ON? The engine will stop new entries and square off all positions on its next tick."
+    : "Release the kill switch? The engine will resume taking entries.";
+  if (!confirm(msg)) return;
+  await fetch("/api/kill", {method: "POST", headers: {"X-ZT": "1", "Content-Type": "application/json"},
+    body: JSON.stringify({on: turningOn})});
+  refresh();
+});
+
+refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -42,6 +42,17 @@ zt run                                             # paper mode
 zt run --once                                      # single tick
 ```
 
+## Dashboard
+
+```bash
+zt dashboard            # http://127.0.0.1:8765 — run alongside `zt run`
+```
+
+Shows mode, engine status/heartbeat, realised day P&L vs the loss limit, open positions with
+stop-loss/target, and today's audit feed. The only action is the kill switch (confirm dialog).
+It binds to localhost only, rejects foreign `Host` headers, and needs no extra dependencies.
+It shows realised P&L and entry/SL/target levels, not live prices.
+
 ## Going live (deliberately hard)
 
 All three are required: `mode: live` in the config, `--live` on the command line, and
